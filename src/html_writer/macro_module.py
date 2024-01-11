@@ -7,13 +7,14 @@ macros = Macros()
 
 def translater(comp_type,
                comp_label,
-               dict_obj_ast_node,
+               kwargs_nodes,
                target_ast_node=None, 
                child_comp_call_trees=[]
                ):
     """
     comp_type: passive, active div/no-chiles, mutable, HCCMutable, etc.
     comp_label: what component needs to be generated: Like PC.Div, PC.Span, AC.Button
+    kwargs_nodes: list of kwarg nodes: ast.keyword(arg=..., value=...)
     child_comp_call_trees: a list of ast each represent call-tree for child node creation
     """
     attr = 'PC'
@@ -45,7 +46,7 @@ def translater(comp_type,
     )
     
     #div_func = ast.Name(id='Div', ctx=ast.Load())
-    keyword_argument = ast.keyword(arg=None, value=dict_obj_ast_node)
+    #keyword_argument = ast.keyword(arg=None, value=dict_obj_ast_node)
     # Create an additional keyword argument for 'childs' with an empty list as its value
     childs_keyword = ast.keyword(arg='childs',
                                  value=ast.List(elts=child_comp_call_trees, ctx=ast.Load())
@@ -53,11 +54,12 @@ def translater(comp_type,
 
     call_ast = ast.Call(div_func,
                         args=[],
-                        keywords=[keyword_argument, childs_keyword]
+                        keywords=[ *kwargs_nodes, childs_keyword]
                         )
     if target_ast_node:
         assign_statement = ast.Assign(targets=[target_ast_node], value=call_ast)
-        return assign_statement
+        assert False
+        return  assign_statement
     else:
         return call_ast
 
@@ -97,10 +99,11 @@ def translater(comp_type,
         
 
 
-def kwargs_has_key(dict_ast_node):
-    for akey in dict_ast_node.keys:
-        if akey.value == 'key':
+def kwargs_has_key(keywords):
+    for _ in keywords:
+        if _.arg == "key":
             return True
+    
     return False
 
     
@@ -123,28 +126,35 @@ def deal_with_inner_with_block(block_tree):
 
     context_expr = withitem.context_expr
     print ("context_expr = ", ast.dump(context_expr))
-    if isinstance(context_expr, ast.Call) and isinstance(context_expr.args[0], ast.Dict):
+    
+    if isinstance(context_expr, ast.Call):
         
         func_node = context_expr.func
-        kwargs_dict = context_expr.args[0]
 
         comp_type = 'Passive'
-
-        print ("Now dealing with keywords")
-        
-        if kwargs_has_key(kwargs_dict):
+        print ("context_expr:keywords = ", context_expr.keywords)
+        if kwargs_has_key(context_expr.keywords):
             comp_type = 'Active'
+
+        
+        # if kwargs_has_key(kwargs_dict):
+        #     comp_type = 'Active'
 
         # TODO: recursively call to deal with inner blocks
         call_ast = translater(comp_type,
                               func_node.id,
-                              kwargs_dict,
+                              context_expr.keywords,
                               target_ast_node=target_ast_node,
                               child_comp_call_trees = child_comp_call_trees
                               )
         return call_ast
-    # else:
-    #     assert False
+    elif isinstance(context_expr, ast.Name):
+        comp_id = context_expr.id
+        comp_type = 'Passive'
+        call_ast = translater(comp_type, comp_id, [], child_comp_call_trees = child_comp_call_trees)
+        return call_ast
+    else:
+        assert False
         
     # assert False
 
@@ -167,23 +177,23 @@ def deal_with_inner_with_block(block_tree):
 
 
 
-def generic_macro_handler(comp_type, hc_comp, tree, *args, **kw):
-    assert 'target' in kw
-    target = kw['target']
-    dict_obj_ast_node = kw['args'][0]
-    with_blocks = [node for node in tree if isinstance(node, ast.With)]
-    print("inner blocks = ", with_blocks)
-    child_call_tree= [deal_with_inner_with_block(_) for _ in with_blocks]
-    return [translater(comp_type, hc_comp, dict_obj_ast_node, target, child_call_tree)]
+# def generic_macro_handler(comp_type, hc_comp, tree, *args, **kw):
+#     assert 'target' in kw
+#     target = kw['target']
+#     dict_obj_ast_node = kw['args'][0]
+#     with_blocks = [node for node in tree if isinstance(node, ast.With)]
+#     print("inner blocks = ", with_blocks)
+#     child_call_tree= [deal_with_inner_with_block(_) for _ in with_blocks]
+#     return [translater(comp_type, hc_comp, dict_obj_ast_node, target, child_call_tree)]
 
 
-def static_comp_macro_handler(hc_comp, tree, *args, **kw):
-    dict_obj_ast_node = kw['args'][0]
-    comp_type = 'Passive'
-    if kwargs_has_key(dict_obj_ast_node):
-        comp_type='Active'
+# def static_comp_macro_handler(hc_comp, tree, *args, **kw):
+#     dict_obj_ast_node = kw['args'][0]
+#     comp_type = 'Passive'
+#     if kwargs_has_key(dict_obj_ast_node):
+#         comp_type='Active'
 
-    return generic_macro_handler(comp_type, hc_comp, tree, *args, **kw)
+#     return generic_macro_handler(comp_type, hc_comp, tree, *args, **kw)
     
 # @macros.block
 # def Button(tree, *args, **kw):
@@ -236,20 +246,20 @@ def static_comp_macro_handler(hc_comp, tree, *args, **kw):
 
 
 
-@macros.block
-def TLDiv(tree, *args, **kw):
-    """
-    a macro that does nothing but shows the ast
-    """
-    assert 'target' in kw
-    target = kw['target']
-    dict_obj_ast_node = kw['args'][0]
-    comp_type = 'Passive'
-    if kwargs_has_key(dict_obj_ast_node):
-        comp_type='Active'
-    with_blocks = [node for node in tree if isinstance(node, ast.With)]
-    child_call_tree= [deal_with_inner_with_block(_) for _ in with_blocks]
-    return [translater(comp_type, 'Div', dict_obj_ast_node, target, child_call_tree)]
+# @macros.block
+# def TLDiv(tree, *args, **kw):
+#     """
+#     a macro that does nothing but shows the ast
+#     """
+#     assert 'target' in kw
+#     target = kw['target']
+#     dict_obj_ast_node = kw['args'][0]
+#     comp_type = 'Passive'
+#     if kwargs_has_key(dict_obj_ast_node):
+#         comp_type='Active'
+#     with_blocks = [node for node in tree if isinstance(node, ast.With)]
+#     child_call_tree= [deal_with_inner_with_block(_) for _ in with_blocks]
+#     return [translater(comp_type, 'Div', dict_obj_ast_node, target, child_call_tree)]
 
 
 
