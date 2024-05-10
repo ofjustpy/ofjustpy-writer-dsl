@@ -4,7 +4,7 @@ import ofjustpy as oj
 
 
 with oj.uictx("tlctx") as tlctx:
-    with Div({'class':[bg/green/1]}) as tldiv:
+    with Div({'class':[bg/green/100]}) as tldiv:
         with Span({"text":"hello", 'classes':"bg-green-100"}):
             pass
 

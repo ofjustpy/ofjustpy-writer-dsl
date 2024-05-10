@@ -15,7 +15,7 @@ import ofjustpy as oj
 with oj.uictx("tlctx") as tlctx:
     with writer_ctx:
         with Div(classes="bg-blue-100") as tldiv:
-            with Span(text="hello", twsty_tags=[bg/blue/1, fc/green/8]):
+            with Span(text="hello", twsty_tags=[bg/blue/100, fc/green/800]):
                 pass
             pass
 

@@ -1,6 +1,7 @@
 from py_tailwind_utils import *
 from macropy.core.macros import Macros
 import ast
+import astor
 
 
 macros = Macros()
@@ -51,7 +52,13 @@ def translater(comp_type,
         attr = "HCCStatic"
         comp_label = comp_label.replace("HCCStatic_", "")
             
+    elif comp_type == "HUI":
+        # access hyperui components via oj.hui
+        attr = "HUI"
 
+    elif comp_type == "SKHUI":
+        # access hyperui components via oj.hui
+        attr = "SKHUI"
     
     # The html component generator
     # e.g. oj.PC.Div, or oj.AD.Button
@@ -123,22 +130,40 @@ def deal_with_inner_with_block(block_tree):
         if kwargs_has_key(context_expr.keywords):
             comp_type = 'Active'
 
-        if func_node.id.startswith("Mutable_"):
-            comp_type = "Mutable"
+        if isinstance(func_node, ast.Name):
+            # if the expression is `with Span(...)` or `with Mutable_(....)`
+            # then func_node is of ast.Name type
+            if func_node.id.startswith("Mutable_"):
+                comp_type = "Mutable"
 
-        if func_node.id.startswith("HCCMutable_"):
-            comp_type = "HCCMutable"
+            if func_node.id.startswith("HCCMutable_"):
+                comp_type = "HCCMutable"
 
-        if func_node.id.startswith("HCCStatic_"):
-            comp_type = "HCCStatic"
+            if func_node.id.startswith("HCCStatic_"):
+                comp_type = "HCCStatic"
 
+            comp_label = func_node.id
 
+        elif isinstance(func_node, ast.Attribute):
+            # if the expression is hui.Button
+            # then func_node.value.id  is hui
+            # and func_node.attr is Button
+            # func_node.value
+            # func_node.attr
+            # func_node.value.id == 'hui'
+            comp_type = func_node.value.id
+            comp_label = func_node.attr
+            
+            pass
+        else:
+            pass
+                
         assign_stmt, ref = translater(comp_type,
-                              func_node.id,
-                              context_expr.keywords,
-                              target_ast_node=target_ast_node,
-                              child_comp_call_trees = child_comp_call_trees
-                              )
+                                      comp_label,
+                                      context_expr.keywords,
+                                      target_ast_node=target_ast_node,
+                                      child_comp_call_trees = child_comp_call_trees
+                                      )
         if assign_stmt:
             assign_stmts.append(assign_stmt)
         return (assign_stmts, ref)
