@@ -62,15 +62,14 @@ def translater(comp_type,
     
     # The html component generator
     # e.g. oj.PC.Div, or oj.AD.Button
-    div_func = ast.Attribute(
-        value=ast.Attribute(
-            value=ast.Name(id='oj', ctx=ast.Load()),
-            attr=attr,
-            ctx=ast.Load()
-        ),
-        attr=comp_label,
-        ctx=ast.Load()
-    )
+    div_func = ast.Attribute(value=ast.Attribute(value=ast.Name(id='oj',
+                                                                ctx=ast.Load()),
+                                                 attr=attr,
+                                                 ctx=ast.Load()
+                                                 ),
+                             attr=comp_label,
+                             ctx=ast.Load()
+                             )
     
     # Create an additional keyword argument for 'childs' with an empty list as its value
     childs_keyword = ast.keyword(arg='childs',
@@ -120,13 +119,14 @@ def deal_with_inner_with_block(block_tree):
         target_ast_node = withitem.optional_vars
         pass
 
-    # The is the context expression `with myctx()`
+    # This the context expression `with myctx()`
     context_expr = withitem.context_expr
     if isinstance(context_expr, ast.Call):
         
         func_node = context_expr.func
 
         comp_type = 'Passive'
+        
         if kwargs_has_key(context_expr.keywords):
             comp_type = 'Active'
 
